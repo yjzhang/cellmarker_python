@@ -16,13 +16,20 @@ try:
 except:
     pass
 try:
+    c.execute('CREATE INDEX cellName_index ON all_cell_markers("cellName")')
+except:
+    pass
+try:
     c.execute('CREATE INDEX entry_index ON all_cell_markers("index_labels")')
 except:
     pass
 
 # build a mapping of gene markers to cell types, and a map of cell types to gene markers.
-genes_to_cells = defaultdict(lambda: [])
-cells_to_genes = defaultdict(lambda: [])
+# TODO: do genes with more references get more weights?
+genes_to_cells = defaultdict(lambda: set())
+genes_to_tissues = defaultdict(lambda: set())
+cells_to_genes = defaultdict(lambda: set())
+tissues_to_genes = defaultdict(lambda: set())
 genes_to_indices = defaultdict(lambda: [])
 for i, row in data.iterrows():
     # one of 'Human' or 'Mouse'
@@ -32,18 +39,20 @@ for i, row in data.iterrows():
     cell_type = row['cellType']
     cell_name = row['cellName']
     gene_symbol = row['geneSymbol']
-    print(gene_symbol)
     if not isinstance(gene_symbol, str):
         continue
     gene_symbols = [gene_symbol]
     if ',' in gene_symbol:
         gene_symbols = [x.strip(' []') for x in gene_symbol.split(',')]
+    gene_symbols = [x.upper() for x in gene_symbols]
     uberon_id = row['UberonOntologyID']
     cell_ontology_id = row['CellOntologyID']
     for gene_symbol in gene_symbols:
         genes_to_indices[gene_symbol].append(i)
-        cells_to_genes[cell_name].append(gene_symbol)
-        genes_to_cells[gene_symbol].append(cell_name)
+        cells_to_genes[cell_name].add(gene_symbol)
+        genes_to_cells[gene_symbol].add(cell_name)
+        genes_to_tissues[gene_symbol].add(tissue)
+        tissues_to_genes[tissue].add(gene_symbol)
 
 # create a table representing a gene-index mapping...
 try:
@@ -57,6 +66,22 @@ try:
     c.execute('CREATE INDEX gene_indices_index ON gene_indices(gene)')
 except:
     pass
+
+# create a table representing a cell type - gene mapping.
+try:
+    c.execute('CREATE TABLE cell_gene (cellName text, gene text)')
+    for cell, genes in cells_to_genes.items():
+        for gene in genes:
+            c.execute('INSERT INTO cell_gene VALUES (?, ?)', (cell, gene))
+except:
+    pass
+try:
+    c.execute('CREATE INDEX cell_names_index ON cells_genes(cellName)')
+except:
+    pass
+
+conn.commit()
+conn.close()
 
 # TODO: do some sort of hypergeometric test???
 # given a list of genes, we want to find both tissue types and cell names that are overrepresented.

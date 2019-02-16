@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div>
+    <table>
+        <tr><td><b>Cell type</b></td> <td><b>P-value</b></td></tr>
+        {% for cell in cell_types %}
+        <tr><td>{{ cell[0] }}</td> <td>{{ cell[1] }}</td></tr>
+        {% endfor %}
+    </table>
+</div>
+
+{% endblock %}

@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container container-main" role="main">
+    <form action="input" method="post" enctype=multipart/form-data>
+
+        <div class="form-group">
+            <div class="form-inline">
+                <label for="test-type">Statistical test:</label>
+                <select class="form-control" id="test-type" name="test-type">
+                    <option value="hypergeom" selected>Hypergeometric test</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <div class="form-inline">
+                <label for="cells-or-tissues">Cells or tissues:</label>
+                <select class="form-control" id="cells-or-tissues" name="cells-or-tissues">
+                    <option value="cells" selected>Cells</option>
+                    <option value="tissues" selected>Tissues</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label for="genes">Genes</label>
+            <div>
+                <textarea class="form-control" id="genes" name="genes" cols="30" rows="8" style="width:30em;">List gene symbols here, one per line.</textarea>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <button type="submit" id="submit" class="btn btn-default">Submit</button>
+        </div>
+
+
+    </form>
+</div>
+{% endblock %}
+
