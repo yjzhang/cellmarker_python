@@ -5,7 +5,7 @@
 pids=`ps ax | grep gunicorn | grep "8889" | awk '{split($0,a," "); print a[1]}'`
 # TODO
 for pid in $pids; do
-    killall -9 $pid
+    kill -9 $pid
     echo "killed gunicorn process $pid"
 done
 
