@@ -76,14 +76,14 @@ except:
 
 # create a table representing a cell type - gene mapping.
 try:
-    c.execute('CREATE TABLE cell_gene (cellName text, gene text)')
+    c.execute('CREATE TABLE cell_gene(cellName text, gene text)')
     for cell, genes in cells_to_genes.items():
         for gene in genes:
             c.execute('INSERT INTO cell_gene VALUES (?, ?)', (cell, gene))
 except:
     pass
 try:
-    c.execute('CREATE INDEX cell_names_index ON cells_genes(cellName)')
+    c.execute('CREATE INDEX cell_names_index ON cell_gene(cellName)')
 except:
     pass
 

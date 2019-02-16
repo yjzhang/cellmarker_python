@@ -41,7 +41,7 @@ def input():
             for g in genes:
                 gene_pmids.append('{0}: {1}'.format(g, ','.join(pmid_to_link(x) for x in ri[3][g])))
             cell_types.append((ri[0], ri[1], ', '.join(ri[2]), ', '.join(gene_pmids)))
-        return render_template('response.html', header=['Cell', 'P-value', 'Genes', 'PMIDs'],
+        return render_template('response.html', header=['Cell', 'P-value', 'Overlapping Genes', 'PMIDs'],
                 cell_types=cell_types)
 
 
