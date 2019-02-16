@@ -14,6 +14,9 @@ Bootstrap(app)
 app.config['MAX_CONTENT_LENGTH'] = 1000 * 1024 * 1024
 # default args to pass to uncurl.run_state_estimation
 
+def pmid_to_link(pmid):
+    return '<a href="https://www.ncbi.nlm.nih.gov/pubmed/{0}">{0}</a>'.format(pmid)
+
 @app.route('/')
 def index():
     return render_template('index.html')
@@ -34,7 +37,9 @@ def input():
         for i in range(10):
             ri = result[i]
             genes = ri[2]
-            gene_pmids = ['{0}: {1}'.format(g, ','.join(ri[3][g])) for g in genes]
+            gene_pmids = []
+            for g in genes:
+                gene_pmids.append('{0}: {1}'.format(g, ','.join(pmid_to_link(x) for x in ri[3][g])))
             cell_types.append((ri[0], ri[1], ','.join(ri[2]), ','.join(gene_pmids)))
         return render_template('response.html', header=['Cell', 'P-value', 'Genes', 'PMIDs'],
                 cell_types=cell_types)

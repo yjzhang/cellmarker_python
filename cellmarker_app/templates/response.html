@@ -11,7 +11,7 @@
         {% for cell in cell_types %}
         <tr>
             {% for item in cell %}
-            <td>{{ item }}</td>
+            <td>{{ item|safe }}</td>
             {% endfor %}
         </tr>
         {% endfor %}
