@@ -31,6 +31,7 @@ genes_to_tissues = defaultdict(lambda: set())
 cells_to_genes = defaultdict(lambda: set())
 tissues_to_genes = defaultdict(lambda: set())
 genes_to_indices = defaultdict(lambda: [])
+cells_genes_to_pmids = defaultdict(lambda: set())
 for i, row in data.iterrows():
     # one of 'Human' or 'Mouse'
     species = row['speciesType']
@@ -39,6 +40,8 @@ for i, row in data.iterrows():
     cell_type = row['cellType']
     cell_name = row['cellName']
     gene_symbol = row['geneSymbol']
+    pmid = row['PMID']
+    # TODO: test that pmid is an int
     if not isinstance(gene_symbol, str):
         continue
     gene_symbols = [gene_symbol]
@@ -48,11 +51,15 @@ for i, row in data.iterrows():
     uberon_id = row['UberonOntologyID']
     cell_ontology_id = row['CellOntologyID']
     for gene_symbol in gene_symbols:
+        if gene_symbol == 'NA':
+            continue
         genes_to_indices[gene_symbol].append(i)
         cells_to_genes[cell_name].add(gene_symbol)
         genes_to_cells[gene_symbol].add(cell_name)
         genes_to_tissues[gene_symbol].add(tissue)
         tissues_to_genes[tissue].add(gene_symbol)
+        cells_genes_to_pmids[(cell_name, gene_symbol)].add(pmid)
+        cells_genes_to_pmids[(tissue, gene_symbol)].add(pmid)
 
 # create a table representing a gene-index mapping...
 try:
@@ -77,6 +84,33 @@ except:
     pass
 try:
     c.execute('CREATE INDEX cell_names_index ON cells_genes(cellName)')
+except:
+    pass
+
+# create a table representing a tissue - gene mapping.
+try:
+    c.execute('CREATE TABLE tissue_gene (tissueType text, gene text)')
+    for tissue, genes in tissues_to_genes.items():
+        for gene in genes:
+            c.execute('INSERT INTO tissue_gene VALUES (?, ?)', (tissue, gene))
+except:
+    pass
+try:
+    c.execute('CREATE INDEX tissue_type_index ON tissue_gene(tissueType)')
+except:
+    pass
+
+# create a table representing a cellName-gene : PMID mapping.
+try:
+    c.execute('CREATE TABLE cell_gene_pmid (cellName text, gene text, pmid text)')
+    for cell_gene, pmids in cells_genes_to_pmids.items():
+        cell, gene = cell_gene
+        for pmid in pmids:
+            c.execute('INSERT INTO cell_gene_pmid VALUES (?, ?, ?)', (cell, gene, pmid))
+except:
+    pass
+try:
+    c.execute('CREATE INDEX cell_gene_pmid_index ON cell_gene_pmid(cellName, gene)')
 except:
     pass
 

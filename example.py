@@ -7,7 +7,7 @@ print(cell0)
 cell0_genes = cellmarker.get_cell_genes(cell0)
 print(cell0_genes)
 pvals = cellmarker.hypergeometric_test(cell0_genes)
-print(pvals[:10])
+print(pvals)
 
 # top genes from cluster 0 of http://uncurl-app.yjzhang.com:8888/user/test_10x_400_new/view
 genes_ex = ['KCNB1', 'LINC00856', 'REST', 'RP11-35G22.1', 'LCN6', 'LYRM7', 'CEP97', 'FGF18', 'CTD-2514K5.2']
