@@ -30,8 +30,14 @@ def input():
     print(genes)
     if method == 'hypergeom':
         result = cellmarker.hypergeometric_test(genes, cells_or_tissues)
-        cell_types = result[:10]
-        return render_template('response.html', cell_types=cell_types)
+        cell_types = []
+        for i in range(10):
+            ri = result[i]
+            genes = ri[2]
+            gene_pmids = ['{0}: {1}'.format(g, ','.join(ri[3][g])) for g in genes]
+            cell_types.append((ri[0], ri[1], ','.join(ri[2]), ','.join(gene_pmids)))
+        return render_template('response.html', header=['Cell', 'P-value', 'Genes', 'PMIDs'],
+                cell_types=cell_types)
 
 
 @app.route('/api_post', methods=['POST'])
@@ -45,7 +51,7 @@ def api_post():
     genes = [x.strip().upper() for x in genes.split()]
     if method == 'hypergeom':
         result = cellmarker.hypergeometric_test(genes, cells_or_tissues)
-        return result
+        return result[:10]
 
 if __name__ == '__main__':
     app.run(debug=True)

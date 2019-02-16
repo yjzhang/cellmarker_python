@@ -77,13 +77,12 @@ def hypergeometric_test(genes, cells_or_tissues='cells'):
     all_genes = get_all_genes()
     cell_p_vals = {}
     genes = set(genes)
-    # TODO: each cell should have 4 items: cell type, p-value, overlapping genes, PMIDs
+    # each cell should have 4 items: cell type, p-value, overlapping genes, PMIDs
     for cell in all_cells:
         cell_genes = set(get_cell_genes(cell))
         overlapping_genes = list(genes.intersection(cell_genes))
         if len(overlapping_genes) == 0:
             continue
-        print(len(cell_genes), len(overlapping_genes))
         pmids = {}
         for gene in overlapping_genes:
             pmids[gene] = get_papers_cell_gene(cell, gene)
