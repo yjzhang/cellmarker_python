@@ -21,7 +21,10 @@ def get_all_cells(cells_or_tissues='cells'):
     """
     conn = sqlite3.connect(DB_DIR)
     C = conn.cursor()
-    C.execute('SELECT DISTINCT cellName FROM cell_gene')
+    if cells_or_tissues == 'cells':
+        C.execute('SELECT DISTINCT cellName FROM cell_gene')
+    elif cells_or_tissues == 'tissues':
+        C.execute('SELECT DISTINCT tissueType FROM tissue_gene')
     results = C.fetchall()
     conn.close()
     return [x[0] for x in results]
@@ -41,13 +44,18 @@ def get_genes_indices(genes):
     conn.close()
     return gene_indices
 
-def get_cell_genes(cell):
+def get_cell_genes(cell, cells_or_tissues='cells'):
     """
     Given the name of a cell, this returns a list of all genes associated with that cell.
+    Alternatively, if cells_or_tissues is 'tissues', this returns a list of
+    all genes associated with that tissue.
     """
     conn = sqlite3.connect(DB_DIR)
     C = conn.cursor()
-    C.execute('SELECT gene FROM cell_gene WHERE cellName=?', (cell,))
+    if cells_or_tissues == 'cells':
+        C.execute('SELECT gene FROM cell_gene WHERE cellName=?', (cell,))
+    elif cells_or_tissues == 'tissues':
+        C.execute('SELECT gene FROM tissue_gene WHERE tissueType=?', (cell,))
     results = C.fetchall()
     results = [x[0] for x in results]
     conn.close()
@@ -79,7 +87,7 @@ def hypergeometric_test(genes, cells_or_tissues='cells'):
     genes = set(genes)
     # each cell should have 4 items: cell type, p-value, overlapping genes, PMIDs
     for cell in all_cells:
-        cell_genes = set(get_cell_genes(cell))
+        cell_genes = set(get_cell_genes(cell, cells_or_tissues))
         overlapping_genes = list(genes.intersection(cell_genes))
         if len(overlapping_genes) == 0:
             continue
@@ -87,7 +95,7 @@ def hypergeometric_test(genes, cells_or_tissues='cells'):
         for gene in overlapping_genes:
             pmids[gene] = get_papers_cell_gene(cell, gene)
         k = len(overlapping_genes)
-        pv = stats.hypergeom.cdf(k, len(all_genes), len(cell_genes), len(genes))
+        pv = stats.hypergeom.cdf(k - 1, len(all_genes), len(cell_genes), len(genes))
         cell_p_vals[cell] = (1 - pv, overlapping_genes, pmids)
     cell_p_vals = list(cell_p_vals.items())
     cell_p_vals.sort(key=lambda x: x[1][0])

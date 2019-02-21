@@ -40,6 +40,7 @@ for i, row in data.iterrows():
     cell_type = row['cellType']
     cell_name = row['cellName']
     gene_symbol = row['geneSymbol']
+    protein_name = row['proteinName']
     pmid = row['PMID']
     # TODO: test that pmid is an int
     if not isinstance(gene_symbol, str):
@@ -48,9 +49,15 @@ for i, row in data.iterrows():
     if ',' in gene_symbol:
         gene_symbols = [x.strip(' []') for x in gene_symbol.split(',')]
     gene_symbols = [x.upper() for x in gene_symbols]
+    cell_marker = row['cellMarker']
+    if isinstance(cell_marker, str):
+        cell_markers = [cell_marker]
+        if ',' in cell_marker:
+            cell_markers = [x.strip(' []') for x in cell_marker.split(',')]
+        gene_symbols += [x.upper() for x in cell_markers]
     uberon_id = row['UberonOntologyID']
     cell_ontology_id = row['CellOntologyID']
-    for gene_symbol in gene_symbols:
+    for gene_symbol in set(gene_symbols):
         if gene_symbol == 'NA':
             continue
         genes_to_indices[gene_symbol].append(i)

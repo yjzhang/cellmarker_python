@@ -34,7 +34,7 @@ def input():
     if method == 'hypergeom':
         result = cellmarker.hypergeometric_test(genes, cells_or_tissues)
         cell_types = []
-        for i in range(10):
+        for i in range(min(20, len(result))):
             ri = result[i]
             genes = ri[2]
             gene_pmids = []
@@ -56,7 +56,7 @@ def api_post():
     genes = [x.strip().upper() for x in genes.split()]
     if method == 'hypergeom':
         result = cellmarker.hypergeometric_test(genes, cells_or_tissues)
-        return result[:10]
+        return result[:20]
 
 if __name__ == '__main__':
     app.run(debug=True)
