@@ -32,6 +32,7 @@ cells_to_genes = defaultdict(lambda: set())
 tissues_to_genes = defaultdict(lambda: set())
 genes_to_indices = defaultdict(lambda: [])
 cells_genes_to_pmids = defaultdict(lambda: set())
+cells_to_cellonto = dict()
 for i, row in data.iterrows():
     # one of 'Human' or 'Mouse'
     species = row['speciesType']
@@ -42,7 +43,9 @@ for i, row in data.iterrows():
     gene_symbol = row['geneSymbol']
     protein_name = row['proteinName']
     pmid = row['PMID']
-    # TODO: test that pmid is an int
+    if pmid == 'Company':
+        pmid = row['Company']
+        print(pmid)
     if not isinstance(gene_symbol, str):
         continue
     gene_symbols = [gene_symbol]
@@ -57,6 +60,8 @@ for i, row in data.iterrows():
         gene_symbols += [x.upper() for x in cell_markers]
     uberon_id = row['UberonOntologyID']
     cell_ontology_id = row['CellOntologyID']
+    if isinstance(cell_ontology_id, str):
+        cells_to_cellonto[cell_name] = cell_ontology_id
     for gene_symbol in set(gene_symbols):
         if gene_symbol == 'NA':
             continue
@@ -104,6 +109,18 @@ except:
     pass
 try:
     c.execute('CREATE INDEX tissue_type_index ON tissue_gene(tissueType)')
+except:
+    pass
+
+# create a table represent a cell name - cell ontology ID mapping
+try:
+    c.execute('CREATE TABLE cell_cl (cellName text, CellOntologyID text)')
+    for cell_name, onto_id in cells_to_cellonto.items():
+        c.execute('INSERT INTO cell_cl VALUES (?, ?)', (cell_name, onto_id))
+except:
+    pass
+try:
+    c.execute('CREATE INDEX cell_cl_index ON cell_cl(cellName)')
 except:
     pass
 

@@ -76,7 +76,7 @@ def get_papers_cell_gene(cell, gene):
     else:
         return []
 
-def hypergeometric_test(genes, cells_or_tissues='cells'):
+def hypergeometric_test(genes, cells_or_tissues='cells', return_header=False):
     """
     Uses a hypergeometric test to identify the most relevant cell types.
     """
@@ -101,6 +101,9 @@ def hypergeometric_test(genes, cells_or_tissues='cells'):
     cell_p_vals.sort(key=lambda x: x[1][0])
     # merge items
     cell_p_vals = [(x[0],) + x[1] for x in cell_p_vals]
+    if return_header:
+        header = ['Cell', 'P-value', 'Overlapping Genes', 'PMIDs']
+        cell_p_vals = [header] + cell_p_vals
     return cell_p_vals
 
 # TODO: what is a more sophisticated test that accounts for the same genes being present in many different cell types?
