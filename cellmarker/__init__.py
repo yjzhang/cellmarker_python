@@ -106,4 +106,70 @@ def hypergeometric_test(genes, cells_or_tissues='cells', return_header=False):
         cell_p_vals = [header] + cell_p_vals
     return cell_p_vals
 
+def get_all_cell_cls():
+    """
+    Returns a dict that maps all cell names to cell ontology objects.
+    """
+    # find cell ontology IDs
+    conn = sqlite3.connect(DB_DIR)
+    C = conn.cursor()
+    C.execute('SELECT * FROM cell_cl')
+    results = C.fetchall()
+    cell_cl = {r[0]: r[1] for r in results}
+    conn.close()
+    # open cell ontology
+    from owlready2 import get_ontology, default_world
+    cl_db_dir = os.path.join(PATH, 'data', 'cl.db')
+    default_world.set_backend(filename=cl_db_dir)
+    onto = get_ontology('cl.owl').load()
+    # http://owlready.8326.n8.nabble.com/Accessing-class-by-its-name-in-owlready2-td457.html 
+    namespace = onto.get_namespace("http://purl.obolibrary.org/obo/")
+    cell_cl_new = dict()
+    for cell, cl in cell_cl.items():
+        cell_cl_new[cell] = namespace[cl]
+    return cell_cl_new
+
+def get_all_child_cells(cell_cls):
+    """
+    Returns a list of all cell names that are children of this cell type.
+    """
+    # TODO
+
+def hiearchical_hypergeom_test(genes, cells_or_tissues='cells', return_header=False):
+    """
+    Returns a list and a dict: {cell: (pval, overlapping genes, pmids, child cell types), ...]
+    """
+    # TODO
+    from scipy import stats
+    all_cells = get_all_cells(cells_or_tissues)
+    all_genes = get_all_genes()
+    cell_cls = get_all_cell_cls()
+    cell_p_vals = {}
+    genes = set(genes)
+    # each cell should have 4 items: cell type, p-value, overlapping genes, PMIDs
+    for cell, cl in cell_cls.items():
+        cell_genes = set(get_cell_genes(cell, cells_or_tissues))
+        overlapping_genes = list(genes.intersection(cell_genes))
+        if len(overlapping_genes) == 0:
+            continue
+        pmids = {}
+        for gene in overlapping_genes:
+            pmids[gene] = get_papers_cell_gene(cell, gene)
+        k = len(overlapping_genes)
+        pv = stats.hypergeom.cdf(k - 1, len(all_genes), len(cell_genes), len(genes))
+        cell_p_vals[cell] = (1 - pv, overlapping_genes, pmids)
+    cell_p_vals = list(cell_p_vals.items())
+    cell_p_vals.sort(key=lambda x: x[1][0])
+    # merge items
+    cell_p_vals = [(x[0],) + x[1] for x in cell_p_vals]
+    if return_header:
+        header = ['Cell', 'P-value', 'Overlapping Genes', 'PMIDs']
+        cell_p_vals = [header] + cell_p_vals
+    return cell_p_vals
+
+
+def heuristic_test(genes, cells_or_tissues='cells', return_header=False):
+    # TODO
+    pass
+
 # TODO: what is a more sophisticated test that accounts for the same genes being present in many different cell types?
