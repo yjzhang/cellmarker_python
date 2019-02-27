@@ -149,7 +149,7 @@ def get_all_cell_cls():
 
 def get_all_child_cells(cell_cls):
     """
-    Returns a list of all cell names that are children of this cell type.
+    Returns a dict of cell type : list of child cell types.
     """
     # TODO
 

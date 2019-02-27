@@ -67,7 +67,7 @@ for i, row in data.iterrows():
     for gene_symbol in set(gene_symbols):
         if gene_symbol == 'NA':
             continue
-        genes_to_indices[gene_symbol, species].append(i)
+        genes_to_indices[gene_symbol].append(i)
         cells_to_genes[cell_name, species].add((gene_symbol))
         genes_to_cells[gene_symbol, species].add((cell_name))
         genes_to_tissues[gene_symbol, species].add((tissue))
