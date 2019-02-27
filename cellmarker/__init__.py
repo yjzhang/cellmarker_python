@@ -63,7 +63,7 @@ def get_cell_genes(cell, cells_or_tissues='cells', species='all'):
     C = conn.cursor()
     if cells_or_tissues == 'cells':
         if species != 'all':
-            C.execute('SELECT gene FROM cell_gene WHERE cellName=? ANDJ species=?', (cell, species))
+            C.execute('SELECT gene FROM cell_gene WHERE cellName=? AND species=?', (cell, species))
         else:
             C.execute('SELECT gene FROM cell_gene WHERE cellName=?', (cell,))
     elif cells_or_tissues == 'tissues':

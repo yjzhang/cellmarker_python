@@ -99,8 +99,7 @@ try:
 except:
     pass
 try:
-    c.execute('CREATE INDEX cell_names_index ON cell_gene(cellName)')
-    c.execute('CREATE INDEX cell_gene_species_index ON cell_gene(species)')
+    c.execute('CREATE INDEX cell_names_index ON cell_gene(cellName, species)')
 except:
     pass
 
@@ -114,8 +113,7 @@ try:
 except:
     pass
 try:
-    c.execute('CREATE INDEX tissue_type_index ON tissue_gene(tissueType)')
-    c.execute('CREATE INDEX tissue_gene_species_index ON tissue_gene(species)')
+    c.execute('CREATE INDEX tissue_type_index ON tissue_gene(tissueType, species)')
 except:
     pass
 
@@ -141,8 +139,7 @@ try:
 except:
     pass
 try:
-    c.execute('CREATE INDEX cell_gene_pmid_index ON cell_gene_pmid(cellName, gene)')
-    c.execute('CREATE INDEX cell_gene_pmid_species_index ON cell_gene_pmid(species)')
+    c.execute('CREATE INDEX cell_gene_pmid_index ON cell_gene_pmid(cellName, gene, species)')
 except:
     pass
 
