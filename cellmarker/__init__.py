@@ -29,6 +29,15 @@ def get_all_cells(cells_or_tissues='cells'):
     conn.close()
     return [x[0] for x in results]
 
+def get_all_species():
+    conn = sqlite3.connect(DB_DIR)
+    C = conn.cursor()
+    C.execute('SELECT DISTINCT species FROM cell_gene')
+    results = C.fetchall()
+    conn.close()
+    return [x[0] for x in results]
+
+
 def get_genes_indices(genes):
     """
     Given a list of genes, this returns a dict that maps gene symbols
@@ -44,7 +53,7 @@ def get_genes_indices(genes):
     conn.close()
     return gene_indices
 
-def get_cell_genes(cell, cells_or_tissues='cells'):
+def get_cell_genes(cell, cells_or_tissues='cells', species='all'):
     """
     Given the name of a cell, this returns a list of all genes associated with that cell.
     Alternatively, if cells_or_tissues is 'tissues', this returns a list of
@@ -53,22 +62,31 @@ def get_cell_genes(cell, cells_or_tissues='cells'):
     conn = sqlite3.connect(DB_DIR)
     C = conn.cursor()
     if cells_or_tissues == 'cells':
-        C.execute('SELECT gene FROM cell_gene WHERE cellName=?', (cell,))
+        if species != 'all':
+            C.execute('SELECT gene FROM cell_gene WHERE cellName=? ANDJ species=?', (cell, species))
+        else:
+            C.execute('SELECT gene FROM cell_gene WHERE cellName=?', (cell,))
     elif cells_or_tissues == 'tissues':
-        C.execute('SELECT gene FROM tissue_gene WHERE tissueType=?', (cell,))
+        if species != 'all':
+            C.execute('SELECT gene FROM tissue_gene WHERE tissueType=? AND species=?', (cell, species))
+        else:
+            C.execute('SELECT gene FROM tissue_gene WHERE tissueType=?', (cell,))
     results = C.fetchall()
     results = [x[0] for x in results]
     conn.close()
     return results
 
-def get_papers_cell_gene(cell, gene):
+def get_papers_cell_gene(cell, gene, species='all'):
     """
     Returns all PMIDs associated with the cell type - gene combination.
     """
     # pubmed link format: https://www.ncbi.nlm.nih.gov/pubmed/<pmid>
     conn = sqlite3.connect(DB_DIR)
     C = conn.cursor()
-    C.execute('SELECT pmid FROM cell_gene_pmid WHERE cellName=? AND gene=?', (cell, gene))
+    if species == 'all':
+        C.execute('SELECT pmid FROM cell_gene_pmid WHERE cellName=? AND gene=?', (cell, gene))
+    else:
+        C.execute('SELECT pmid FROM cell_gene_pmid WHERE cellName=? AND gene=? AND species=?', (cell, gene, species))
     results = C.fetchall()
     conn.close()
     if len(results) > 0:
@@ -76,7 +94,7 @@ def get_papers_cell_gene(cell, gene):
     else:
         return []
 
-def hypergeometric_test(genes, cells_or_tissues='cells', return_header=False):
+def hypergeometric_test(genes, cells_or_tissues='cells', species='all', return_header=False):
     """
     Uses a hypergeometric test to identify the most relevant cell types.
     """
@@ -87,7 +105,7 @@ def hypergeometric_test(genes, cells_or_tissues='cells', return_header=False):
     genes = set(genes)
     # each cell should have 4 items: cell type, p-value, overlapping genes, PMIDs
     for cell in all_cells:
-        cell_genes = set(get_cell_genes(cell, cells_or_tissues))
+        cell_genes = set(get_cell_genes(cell, cells_or_tissues, species=species))
         overlapping_genes = list(genes.intersection(cell_genes))
         if len(overlapping_genes) == 0:
             continue
@@ -135,7 +153,7 @@ def get_all_child_cells(cell_cls):
     """
     # TODO
 
-def hiearchical_hypergeom_test(genes, cells_or_tissues='cells', return_header=False):
+def hiearchical_hypergeom_test(genes, cells_or_tissues='cells', species='all', return_header=False):
     """
     Returns a list and a dict: {cell: (pval, overlapping genes, pmids, child cell types), ...]
     """
