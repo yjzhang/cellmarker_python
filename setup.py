@@ -8,6 +8,7 @@ setup(
     author_email='yjzhang@cs.washington.edu',
     url='https://github.com/yjzhang/cellmarker_python',
     license='MIT',
+    install_requires=['owlready2', 'backports.functools_lru_cache'],
     packages=find_packages("."),
     # this is for including the data dir in the package.
     zip_safe=False,

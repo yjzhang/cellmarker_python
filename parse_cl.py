@@ -11,3 +11,6 @@ namespace = onto.get_namespace("http://purl.obolibrary.org/obo/")
 classes = list(onto.classes())
 
 # TODO: find a way to get parents of a node???
+for c in classes:
+    descendants = c.descendants()
+    ancestors = c.ancestors()

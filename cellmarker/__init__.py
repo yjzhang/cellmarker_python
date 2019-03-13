@@ -1,6 +1,11 @@
 import os
 import sqlite3
 
+try:
+    from functools import lru_cache
+except ImportError:
+    from backports.functools_lru_cache import lru_cache
+
 PATH = os.path.dirname(__file__)
 DB_DIR = os.path.join(PATH, 'data', 'cell_marker.db')
 
@@ -53,6 +58,7 @@ def get_genes_indices(genes):
     conn.close()
     return gene_indices
 
+@lru_cache(maxsize=None)
 def get_cell_genes(cell, cells_or_tissues='cells', species='all'):
     """
     Given the name of a cell, this returns a list of all genes associated with that cell.
@@ -76,6 +82,7 @@ def get_cell_genes(cell, cells_or_tissues='cells', species='all'):
     conn.close()
     return results
 
+@lru_cache(maxsize=None)
 def get_papers_cell_gene(cell, gene, species='all'):
     """
     Returns all PMIDs associated with the cell type - gene combination.
@@ -124,11 +131,17 @@ def hypergeometric_test(genes, cells_or_tissues='cells', species='all', return_h
         cell_p_vals = [header] + cell_p_vals
     return cell_p_vals
 
-def get_all_cell_cls():
+@lru_cache(maxsize=None)
+def get_all_child_cells():
     """
-    Returns a dict that maps all cell names to cell ontology objects.
+    Args:
+        cell_cls (dict): dict of cell type name : ontology thing
+
+    Returns a dict of cell type : list of child cell types.
     """
-    # find cell ontology IDs
+    from owlready2 import get_ontology, default_world
+    cl_db_dir = os.path.join(PATH, 'data', 'cl.db')
+    default_world.set_backend(filename=cl_db_dir)
     conn = sqlite3.connect(DB_DIR)
     C = conn.cursor()
     C.execute('SELECT * FROM cell_cl')
@@ -136,52 +149,69 @@ def get_all_cell_cls():
     cell_cl = {r[0]: r[1] for r in results}
     conn.close()
     # open cell ontology
-    from owlready2 import get_ontology, default_world
-    cl_db_dir = os.path.join(PATH, 'data', 'cl.db')
-    default_world.set_backend(filename=cl_db_dir)
     onto = get_ontology('cl.owl').load()
     # http://owlready.8326.n8.nabble.com/Accessing-class-by-its-name-in-owlready2-td457.html 
     namespace = onto.get_namespace("http://purl.obolibrary.org/obo/")
-    cell_cl_new = dict()
+    cell_cls = dict()
     for cell, cl in cell_cl.items():
-        cell_cl_new[cell] = namespace[cl]
-    return cell_cl_new
+        cell_cls[cell] = namespace[cl]
+    cl_cells = {cl.get_name(cl) : cell for cell,  cl in cell_cls.items()}
 
-def get_all_child_cells(cell_cls):
-    """
-    Returns a dict of cell type : list of child cell types.
-    """
-    # TODO
+    cells_children = dict()
+    for cell_name, cl in cell_cls.items():
+        children = list(cl.descendants())
+        cells_children[cell_name] = []
+        for child in children:
+            child_name = child.get_name(child)
+            if child_name in cl_cells:
+                cell_type = cl_cells[child.get_name(child)]
+                cells_children[cell_name].append(cell_type)
+    return cells_children
 
-def hiearchical_hypergeom_test(genes, cells_or_tissues='cells', species='all', return_header=False):
+
+def hierarchical_hypergeom_test(genes, cells_or_tissues='cells', species='all', return_header=False):
     """
     Returns a list and a dict: {cell: (pval, overlapping genes, pmids, child cell types), ...]
     """
-    # TODO
     from scipy import stats
     all_cells = get_all_cells(cells_or_tissues)
     all_genes = get_all_genes()
-    cell_cls = get_all_cell_cls()
+    cells_children = get_all_child_cells()
+    # TODO: add all 'child' genes?
     cell_p_vals = {}
     genes = set(genes)
     # each cell should have 4 items: cell type, p-value, overlapping genes, PMIDs
-    for cell, cl in cell_cls.items():
-        cell_genes = set(get_cell_genes(cell, cells_or_tissues))
-        overlapping_genes = list(genes.intersection(cell_genes))
+    # cells_genes_mapping contains
+    cells_genes_mapping = {}
+    for cell in all_cells:
+        cells_genes_mapping[cell] = {cell: get_cell_genes(cell, cells_or_tissues, species)}
+    for cell in all_cells:
+        if cell in cells_children:
+            for child in cells_children[cell]:
+                cells_genes_mapping[cell][child] = get_cell_genes(child, cells_or_tissues, species)
+    for cell, cell_genes in cells_genes_mapping.items():
+        # all_cell_genes contains all genes for this and child cell types.
+        all_cell_genes = set()
+        for gene_list in cell_genes.values():
+            all_cell_genes.update(gene_list)
+        overlapping_genes = list(genes.intersection(all_cell_genes))
         if len(overlapping_genes) == 0:
             continue
+        # TODO: deal with child cell types?
         pmids = {}
-        for gene in overlapping_genes:
-            pmids[gene] = get_papers_cell_gene(cell, gene)
+        for child, gene_list in cell_genes.items():
+            sub_overlapping_genes = genes.intersection(gene_list)
+            for gene in sub_overlapping_genes:
+                pmids[gene] = get_papers_cell_gene(cell, gene, species)
         k = len(overlapping_genes)
-        pv = stats.hypergeom.cdf(k - 1, len(all_genes), len(cell_genes), len(genes))
+        pv = stats.hypergeom.cdf(k - 1, len(all_genes), len(all_cell_genes), len(genes))
         cell_p_vals[cell] = (1 - pv, overlapping_genes, pmids)
     cell_p_vals = list(cell_p_vals.items())
     cell_p_vals.sort(key=lambda x: x[1][0])
     # merge items
     cell_p_vals = [(x[0],) + x[1] for x in cell_p_vals]
     if return_header:
-        header = ['Cell', 'P-value', 'Overlapping Genes', 'PMIDs']
+        header = ['Cell', 'P-value', 'Overlapping Genes', 'PMIDs', 'Child Cells']
         cell_p_vals = [header] + cell_p_vals
     return cell_p_vals
 

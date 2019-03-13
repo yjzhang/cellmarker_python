@@ -30,10 +30,15 @@ PTPRO
 CELF4
 """.strip().split('\n')
 pvals_brain = cellmarker.hypergeometric_test(genes_brain)
+print('basic')
 print(pvals_brain[:10])
+pvals_hierarchical = cellmarker.hierarchical_hypergeom_test(genes_brain)
+print('hierarchical')
+print(pvals_hierarchical[:10])
 
 # direct db access
 import sqlite3
 conn = sqlite3.connect(cellmarker.DB_DIR)
 C = conn.cursor()
 C.execute('SELECT * FROM cell_gene WHERE gene="MEG3"')
+
