@@ -104,6 +104,10 @@ def get_papers_cell_gene(cell, gene, species='all'):
 def hypergeometric_test(genes, cells_or_tissues='cells', species='all', return_header=False):
     """
     Uses a hypergeometric test to identify the most relevant cell types.
+
+    Returns:
+        list of 4-tuples: cell name, p-value, overlapping genes, pmids
+        in order of ascending p-value.
     """
     from scipy import stats
     all_cells = get_all_cells(cells_or_tissues)
