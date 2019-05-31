@@ -34,6 +34,17 @@ def get_all_cells(cells_or_tissues='cells'):
     conn.close()
     return [x[0] for x in results]
 
+def get_all_cell_cls(cells_or_tissues='cells'):
+    """
+    Returns a list of (cell, cellontology id) tuples.
+    """
+    conn = sqlite3.connect(DB_DIR)
+    C = conn.cursor()
+    C.execute('SELECT DISTINCT cellName, CellOntologyID FROM cell_cl')
+    results = C.fetchall()
+    conn.close()
+    return results
+
 def get_all_species():
     conn = sqlite3.connect(DB_DIR)
     C = conn.cursor()
@@ -101,7 +112,7 @@ def get_papers_cell_gene(cell, gene, species='all'):
     else:
         return []
 
-def hypergeometric_test(genes, cells_or_tissues='cells', species='all', return_header=False):
+def hypergeometric_test(genes, cells_or_tissues='cells', species='all', return_header=False, return_cl=False):
     """
     Uses a hypergeometric test to identify the most relevant cell types.
 
@@ -110,7 +121,13 @@ def hypergeometric_test(genes, cells_or_tissues='cells', species='all', return_h
         in order of ascending p-value.
     """
     from scipy import stats
-    all_cells = get_all_cells(cells_or_tissues)
+    genes = [x.upper() for x in genes]
+    if return_cl:
+        all_cell_cls = get_all_cell_cls(cells_or_tissues)
+        all_cells = [x[0] for x in all_cell_cls]
+        cells_to_cls = {c[0]: c[1] for c in all_cell_cls}
+    else:
+        all_cells = get_all_cells(cells_or_tissues)
     all_genes = get_all_genes()
     cell_p_vals = {}
     genes = set(genes)
@@ -133,6 +150,11 @@ def hypergeometric_test(genes, cells_or_tissues='cells', species='all', return_h
     if return_header:
         header = ['Cell', 'P-value', 'Overlapping Genes', 'PMIDs']
         cell_p_vals = [header] + cell_p_vals
+    if return_cl:
+        if return_header:
+            cell_p_vals[0] = ['Cell Ontology ID'] + cell_p_vals[0]
+        for i in range(1, len(cell_p_vals)):
+            cell_p_vals[i] = (cells_to_cls[cell_p_vals[i][0]],) + cell_p_vals[i]
     return cell_p_vals
 
 @lru_cache(maxsize=None)
