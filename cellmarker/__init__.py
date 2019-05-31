@@ -151,9 +151,11 @@ def hypergeometric_test(genes, cells_or_tissues='cells', species='all', return_h
         header = ['Cell', 'P-value', 'Overlapping Genes', 'PMIDs']
         cell_p_vals = [header] + cell_p_vals
     if return_cl:
+        start_id = 0
         if return_header:
             cell_p_vals[0] = ['Cell Ontology ID'] + cell_p_vals[0]
-        for i in range(1, len(cell_p_vals)):
+            start_id = 1
+        for i in range(start_id, len(cell_p_vals)):
             cell_p_vals[i] = (cells_to_cls[cell_p_vals[i][0]],) + cell_p_vals[i]
     return cell_p_vals
 
