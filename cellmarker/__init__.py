@@ -8,6 +8,8 @@ except ImportError:
 
 PATH = os.path.dirname(__file__)
 DB_DIR = os.path.join(PATH, 'data', 'cell_marker.db')
+SPECIES_MAP = {'human': 'Human', 'homo_sapiens': 'Human', 'mouse': 'Mouse', 'mus_musculus': 'Mouse', 'both': 'all'}
+BASIC_SPECIES = {'Human', 'Mouse', 'all'}
 
 def get_all_genes():
     """
@@ -120,6 +122,8 @@ def hypergeometric_test(genes, cells_or_tissues='cells', species='all', return_h
         list of 4-tuples: cell name, p-value, overlapping genes, pmids
         in order of ascending p-value.
     """
+    if species not in BASIC_SPECIES:
+        species = SPECIES_MAP[species]
     from scipy import stats
     genes = [x.upper() for x in genes]
     if return_cl:
@@ -139,7 +143,7 @@ def hypergeometric_test(genes, cells_or_tissues='cells', species='all', return_h
             continue
         pmids = {}
         for gene in overlapping_genes:
-            pmids[gene] = get_papers_cell_gene(cell, gene)
+            pmids[gene] = get_papers_cell_gene(cell, gene, species=species)
         k = len(overlapping_genes)
         pv = stats.hypergeom.cdf(k - 1, len(all_genes), len(cell_genes), len(genes))
         cell_p_vals[cell] = (1 - pv, overlapping_genes, pmids)
