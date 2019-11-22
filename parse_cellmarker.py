@@ -75,6 +75,45 @@ for i, row in data.iterrows():
         cells_genes_to_pmids[(cell_name, gene_symbol, species)].add(pmid)
         cells_genes_to_pmids[(tissue, gene_symbol, species)].add(pmid)
 
+# TODO: tfidf transform
+# load corpus
+import numpy as np
+mouse_gene_symbols = [x[1] for x in cells_genes_to_pmids.keys() if x[2] == 'Mouse']
+mouse_cells = [x[0] for x in cells_genes_to_pmids.keys() if x[2] == 'Mouse']
+human_gene_symbols = [x[1] for x in cells_genes_to_pmids.keys() if x[2] == 'Human']
+human_cells = [x[0] for x in cells_genes_to_pmids.keys() if x[2] == 'Human']
+mouse_gene_symbols = np.array(list(set(mouse_gene_symbols)))
+human_gene_symbols = np.array(list(set(human_gene_symbols)))
+mouse_cells = np.array(list(set(mouse_cells)))
+human_cells = np.array(list(set(human_cells)))
+gene_to_id_human = {x:i for i, x in enumerate(human_gene_symbols)}
+gene_to_id_mouse = {x:i for i, x in enumerate(mouse_gene_symbols)}
+cell_to_id_human = {x:i for i, x in enumerate(human_cells)}
+cell_to_id_mouse = {x:i for i, x in enumerate(mouse_cells)}
+
+human_data = np.zeros((len(human_cells), len(human_gene_symbols)))
+mouse_data = np.zeros((len(mouse_cells), len(mouse_gene_symbols)))
+for cell_gene, pmids in cells_genes_to_pmids.items():
+    cell, gene, species = cell_gene
+    if species == 'Human':
+        human_data[cell_to_id_human[cell], gene_to_id_human[gene]] = len(pmids)
+    if species == 'Mouse':
+        mouse_data[cell_to_id_mouse[cell], gene_to_id_mouse[gene]] = len(pmids)
+
+
+from scipy import sparse
+corpus = sparse.csr_matrix(human_data)
+corpus_data = corpus.toarray()
+cells, genes = corpus.shape
+# TODO: create a tf-idf matrix from corpus.mm
+# each cell is like a document, each gene is like a word
+from sklearn.feature_extraction.text import TfidfTransformer
+tfidf = TfidfTransformer()
+data_human_tfidf = tfidf.fit_transform(corpus).toarray()
+corpus_mouse = sparse.csr_matrix(mouse_data)
+data_mouse_tfidf = tfidf.fit_transform(corpus_mouse).toarray()
+
+
 # create a table representing a gene-index mapping...
 try:
     c.execute('CREATE TABLE gene_indices (gene text, row_id integer)')
@@ -143,10 +182,22 @@ try:
 except:
     pass
 
+try:
+    c.execute('CREATE TABLE cell_gene_tfidf (cellName text, gene text, species text, tfidf real)')
+    for cell_gene, pmids in cells_genes_to_pmids.items():
+        cell, gene, species = cell_gene
+        if species == 'Human':
+            tfidf_val = data_human_tfidf[cell_to_id_human[cell], gene_to_id_human[gene]]
+        if species == 'Mouse':
+            tfidf_val = data_mouse_tfidf[cell_to_id_mouse[cell], gene_to_id_mouse[gene]]
+        c.execute('INSERT INTO cell_gene_tfidf VALUES (?, ?, ?, ?)', (cell, gene, species, tfidf_val))
+except:
+    pass
+try:
+    c.execute('CREATE INDEX cell_gene_tfidf_index ON cell_gene_tfidf(cellName, gene, species)')
+except:
+    pass
+
+
 conn.commit()
 conn.close()
-
-# TODO: do some sort of hypergeometric test???
-# given a list of genes, we want to find both tissue types and cell names that are overrepresented.
-# how do we do that???
-# how do we calculate p-values for this thing?

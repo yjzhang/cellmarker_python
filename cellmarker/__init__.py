@@ -8,7 +8,7 @@ except ImportError:
 
 PATH = os.path.dirname(__file__)
 DB_DIR = os.path.join(PATH, 'data', 'cell_marker.db')
-SPECIES_MAP = {'human': 'Human', 'homo_sapiens': 'Human', 'mouse': 'Mouse', 'mus_musculus': 'Mouse', 'both': 'all'}
+SPECIES_MAP = {'human': 'Human', 'homo_sapiens': 'Human', 'Human': 'Human', 'mouse': 'Mouse', 'mus_musculus': 'Mouse', 'Mouse': 'Mouse', 'both': 'all', 'all': 'all'}
 BASIC_SPECIES = {'Human', 'Mouse', 'all'}
 
 def get_all_genes():
@@ -100,6 +100,7 @@ def get_papers_cell_gene(cell, gene, species='all'):
     """
     Returns all PMIDs associated with the cell type - gene combination.
     """
+    species = SPECIES_MAP[species]
     # pubmed link format: https://www.ncbi.nlm.nih.gov/pubmed/<pmid>
     conn = sqlite3.connect(DB_DIR)
     C = conn.cursor()
@@ -113,6 +114,56 @@ def get_papers_cell_gene(cell, gene, species='all'):
         return [x[0] for x in results]
     else:
         return []
+
+@lru_cache(maxsize=None)
+def get_cell_genes_pmids(cell, species='all', use_tfidf=True, threshold=None, **params):
+    """
+    Returns a list of tuples
+    """
+    # pubmed link format: https://www.ncbi.nlm.nih.gov/pubmed/<pmid>
+    conn = sqlite3.connect(DB_DIR)
+    C = conn.cursor()
+    if species == 'both':
+        # merge results by gene
+        gene_results = {}
+        statement = 'SELECT gene, pmid FROM cell_gene_pmid WHERE cellName=?'
+        C.execute(statement, (cell, species))
+        results = C.fetchall()
+        for gene, pmid in results:
+            gene = gene.upper()
+            if gene in gene_results:
+                _, old_pmids, old_counts = gene_results[gene]
+                gene_results[gene] = (gene, old_pmids + ',' + pmid, old_counts + 1)
+            else:
+                gene_results[gene] = (gene, pmid, 1)
+        if use_tfidf:
+            statement = 'SELECT gene, tfidf FROM cell_gene_tfidf WHERE cellName=?'
+            C.execute(statement, (cell, ))
+            results = C.fetchall()
+            for gene, tfidf in results:
+                gene_results[gene] = gene_results[gene][:-1] + (tfidf,)
+    else:
+        statement = 'SELECT gene, pmid FROM cell_gene_pmid WHERE cellName=? AND species=?'
+        taxid = SPECIES_MAP[species]
+        C.execute(statement, (cell, taxid))
+        gene_results = {}
+        results = C.fetchall()
+        for gene, pmid in results:
+            gene = gene.upper()
+            if gene in gene_results:
+                _, old_pmids, old_counts = gene_results[gene]
+                gene_results[gene] = (gene, old_pmids + ',' + pmid, old_counts + 1)
+            else:
+                gene_results[gene] = (gene, pmid, 1)
+        if use_tfidf:
+            statement = 'SELECT gene, tfidf FROM cell_gene_tfidf WHERE cellName=? AND species=?'
+            C.execute(statement, (cell, taxid))
+            results = C.fetchall()
+            for gene, tfidf in results:
+                gene_results[gene] = gene_results[gene][:-1] + (tfidf,)
+    conn.close()
+    return gene_results.values()
+
 
 def hypergeometric_test(genes, cells_or_tissues='cells', species='all', return_header=False, return_cl=False):
     """
