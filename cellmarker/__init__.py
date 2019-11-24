@@ -8,25 +8,26 @@ except ImportError:
 
 PATH = os.path.dirname(__file__)
 DB_DIR = os.path.join(PATH, 'data', 'cell_marker.db')
+PANGLAO_DB_DIR = os.path.join(PATH, 'data', 'panglao.db')
 SPECIES_MAP = {'human': 'Human', 'homo_sapiens': 'Human', 'Human': 'Human', 'mouse': 'Mouse', 'mus_musculus': 'Mouse', 'Mouse': 'Mouse', 'both': 'all', 'all': 'all'}
 BASIC_SPECIES = {'Human', 'Mouse', 'all'}
 
-def get_all_genes():
+def get_all_genes(db_dir=DB_DIR):
     """
     Returns a list of all unique gene symbols.
     """
-    conn = sqlite3.connect(DB_DIR)
+    conn = sqlite3.connect(db_dir)
     C = conn.cursor()
     C.execute('SELECT DISTINCT gene FROM gene_indices')
     results = C.fetchall()
     conn.close()
     return [x[0] for x in results]
 
-def get_all_cells(cells_or_tissues='cells'):
+def get_all_cells(cells_or_tissues='cells', db_dir=DB_DIR):
     """
     Returns a list of all unique cell names, or tissue names.
     """
-    conn = sqlite3.connect(DB_DIR)
+    conn = sqlite3.connect(db_dir)
     C = conn.cursor()
     if cells_or_tissues == 'cells':
         C.execute('SELECT DISTINCT cellName FROM cell_gene')
@@ -36,19 +37,19 @@ def get_all_cells(cells_or_tissues='cells'):
     conn.close()
     return [x[0] for x in results]
 
-def get_all_cell_cls(cells_or_tissues='cells'):
+def get_all_cell_cls(cells_or_tissues='cells', db_dir=DB_DIR):
     """
     Returns a list of (cell, cellontology id) tuples.
     """
-    conn = sqlite3.connect(DB_DIR)
+    conn = sqlite3.connect(db_dir)
     C = conn.cursor()
     C.execute('SELECT DISTINCT cellName, CellOntologyID FROM cell_cl')
     results = C.fetchall()
     conn.close()
     return results
 
-def get_all_species():
-    conn = sqlite3.connect(DB_DIR)
+def get_all_species(db_dir=DB_DIR):
+    conn = sqlite3.connect(db_dir)
     C = conn.cursor()
     C.execute('SELECT DISTINCT species FROM cell_gene')
     results = C.fetchall()
@@ -56,12 +57,12 @@ def get_all_species():
     return [x[0] for x in results]
 
 
-def get_genes_indices(genes):
+def get_genes_indices(genes, db_dir=DB_DIR):
     """
     Given a list of genes, this returns a dict that maps gene symbols
     to all the indices that correspond to the given gene.
     """
-    conn = sqlite3.connect(DB_DIR)
+    conn = sqlite3.connect(db_dir)
     C = conn.cursor()
     gene_indices = {}
     for gene in genes:
@@ -72,13 +73,13 @@ def get_genes_indices(genes):
     return gene_indices
 
 @lru_cache(maxsize=None)
-def get_cell_genes(cell, cells_or_tissues='cells', species='all'):
+def get_cell_genes(cell, cells_or_tissues='cells', species='all', db_dir=DB_DIR):
     """
     Given the name of a cell, this returns a list of all genes associated with that cell.
     Alternatively, if cells_or_tissues is 'tissues', this returns a list of
     all genes associated with that tissue.
     """
-    conn = sqlite3.connect(DB_DIR)
+    conn = sqlite3.connect(db_dir)
     C = conn.cursor()
     if cells_or_tissues == 'cells':
         if species != 'all':
@@ -96,13 +97,13 @@ def get_cell_genes(cell, cells_or_tissues='cells', species='all'):
     return results
 
 @lru_cache(maxsize=None)
-def get_papers_cell_gene(cell, gene, species='all'):
+def get_papers_cell_gene(cell, gene, species='all', db_dir=DB_DIR):
     """
     Returns all PMIDs associated with the cell type - gene combination.
     """
     species = SPECIES_MAP[species]
     # pubmed link format: https://www.ncbi.nlm.nih.gov/pubmed/<pmid>
-    conn = sqlite3.connect(DB_DIR)
+    conn = sqlite3.connect(db_dir)
     C = conn.cursor()
     if species == 'all':
         C.execute('SELECT pmid FROM cell_gene_pmid WHERE cellName=? AND gene=?', (cell, gene))
@@ -116,12 +117,12 @@ def get_papers_cell_gene(cell, gene, species='all'):
         return []
 
 @lru_cache(maxsize=None)
-def get_cell_genes_pmids(cell, species='all', use_tfidf=True, threshold=None, **params):
+def get_cell_genes_pmids(cell, species='all', use_tfidf=True, threshold=None, db_dir=DB_DIR, **params):
     """
     Returns a list of tuples
     """
     # pubmed link format: https://www.ncbi.nlm.nih.gov/pubmed/<pmid>
-    conn = sqlite3.connect(DB_DIR)
+    conn = sqlite3.connect(db_dir)
     C = conn.cursor()
     if species == 'both':
         # merge results by gene
@@ -165,7 +166,7 @@ def get_cell_genes_pmids(cell, species='all', use_tfidf=True, threshold=None, **
     return gene_results.values()
 
 
-def hypergeometric_test(genes, cells_or_tissues='cells', species='all', return_header=False, return_cl=False):
+def hypergeometric_test(genes, cells_or_tissues='cells', species='all', return_header=False, return_cl=False, db_dir=DB_DIR):
     """
     Uses a hypergeometric test to identify the most relevant cell types.
 
@@ -178,23 +179,23 @@ def hypergeometric_test(genes, cells_or_tissues='cells', species='all', return_h
     from scipy import stats
     genes = [x.upper() for x in genes]
     if return_cl:
-        all_cell_cls = get_all_cell_cls(cells_or_tissues)
+        all_cell_cls = get_all_cell_cls(cells_or_tissues, db_dir=db_dir)
         all_cells = [x[0] for x in all_cell_cls]
         cells_to_cls = {c[0]: c[1] for c in all_cell_cls}
     else:
-        all_cells = get_all_cells(cells_or_tissues)
-    all_genes = get_all_genes()
+        all_cells = get_all_cells(cells_or_tissues, db_dir=db_dir)
+    all_genes = get_all_genes(db_dir=db_dir)
     cell_p_vals = {}
     genes = set(genes)
     # each cell should have 4 items: cell type, p-value, overlapping genes, PMIDs
     for cell in all_cells:
-        cell_genes = set(get_cell_genes(cell, cells_or_tissues, species=species))
+        cell_genes = set(get_cell_genes(cell, cells_or_tissues, species=species, db_dir=db_dir))
         overlapping_genes = list(genes.intersection(cell_genes))
         if len(overlapping_genes) == 0:
             continue
         pmids = {}
         for gene in overlapping_genes:
-            pmids[gene] = get_papers_cell_gene(cell, gene, species=species)
+            pmids[gene] = get_papers_cell_gene(cell, gene, species=species, db_dir=db_dir)
         k = len(overlapping_genes)
         pv = stats.hypergeom.cdf(k - 1, len(all_genes), len(cell_genes), len(genes))
         cell_p_vals[cell] = (1 - pv, overlapping_genes, pmids)

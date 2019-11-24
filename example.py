@@ -16,6 +16,8 @@ genes_ex = ['KCNB1', 'LINC00856', 'REST', 'RP11-35G22.1', 'LCN6', 'LYRM7', 'CEP9
 pvals_ex = cellmarker.hypergeometric_test(genes_ex)
 print(pvals_ex[:10])
 
+print('Panglao DB test')
+print(cellmarker.hypergeometric_test(genes_ex, db_dir=cellmarker.PANGLAO_DB_DIR))
 # cluster 10 of http://uncurl-app.yjzhang.com:8888/user/d909e044-63cc-4b2a-942b-0611b0be4837-cerebellum-k10-all-cells/view
 genes_brain = """
 HDAC9
@@ -32,13 +34,5 @@ CELF4
 pvals_brain = cellmarker.hypergeometric_test(genes_brain)
 print('basic')
 print(pvals_brain[:10])
-pvals_hierarchical = cellmarker.hierarchical_hypergeom_test(genes_brain)
-print('hierarchical')
-print(pvals_hierarchical[:10])
 
-# direct db access
-import sqlite3
-conn = sqlite3.connect(cellmarker.DB_DIR)
-C = conn.cursor()
-C.execute('SELECT * FROM cell_gene WHERE gene="MEG3"')
 
