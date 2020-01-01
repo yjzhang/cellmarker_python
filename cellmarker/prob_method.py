@@ -163,7 +163,7 @@ def prob_test(genes, return_header=False, include_cell_components=False, include
 
   return cell_prob_vals
 
-def test_prob_test():
+def test_prob_test(species='human'):
   #tabula-muris-dropseq, top ~20 genes (taxid,geneid,symbol) for B cell
   #based on scLit, the top retrieval should be:
   #  D001402, B-Lymphocytes, -89.49026841217798
@@ -187,7 +187,7 @@ def test_prob_test():
   genes = [g.split(",")[2] for g in genes]
   params = prob_test_default_params()
 
-  cell_prob_vals = prob_test(genes=genes, params=params)
+  cell_prob_vals = prob_test(genes=genes, params=params, species=species)
   
   for i in range(min(len(cell_prob_vals), 10)):
     t = cell_prob_vals[i]
@@ -195,4 +195,6 @@ def test_prob_test():
   return
 
 if __name__ == '__main__':
-  test_prob_test()
+  test_prob_test('human')
+  test_prob_test('mouse')
+  test_prob_test('both')

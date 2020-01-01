@@ -128,7 +128,7 @@ def get_cell_genes_pmids(cell, species='all', use_tfidf=True, threshold=None, db
         # merge results by gene
         gene_results = {}
         statement = 'SELECT gene, pmid FROM cell_gene_pmid WHERE cellName=?'
-        C.execute(statement, (cell, species))
+        C.execute(statement, (cell, ))
         results = C.fetchall()
         for gene, pmid in results:
             gene = gene.upper()
